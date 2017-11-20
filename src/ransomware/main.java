@@ -9,6 +9,7 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.net.URLDecoder;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -70,6 +71,11 @@ public class main {
         String[] FileTypesArray = cmd.getOptionValues("type");   
         String InputDirectory  = cmd.getOptionValue("directory");
         String DecryptionInfoPath  = cmd.getOptionValue("decryption");
+        
+        if (InputDirectory == null)
+        {
+            InputDirectory = System.getProperty("user.dir");
+        }
         
         // If -d option for decryption has not been set, we encrypt.
         if (DecryptionInfoPath == null)
@@ -162,18 +168,31 @@ public class main {
             
             // Get all files from directory path passed in args.
             Files.walk(path).forEach(filepath -> files.add(filepath.toString()));
-            
-            // Get only files from file types passed in args with -t.
-            for(int i = 0; i < files.size(); i++)
+            if (FileTypesArray == null)             
             {
-                for (int j = 0; j < FileTypesArray.length; j++)
+                // Get all files.
+                for(int i = 0; i < files.size(); i++)
                 {
-                    if (files.get(i).contains("." + FileTypesArray[j]))
+                    if (files.get(i).contains("."))
                     {
-                        FilesToDecrypt.add(files.get(i));
+                         FilesToDecrypt.add(files.get(i));
                     }
                 }
             }
+            else
+            {
+                // Get only files from file types passed in args with -t.
+                for(int i = 0; i < files.size(); i++)
+                {
+                    for (int j = 0; j < FileTypesArray.length; j++)
+                    {
+                        if (files.get(i).contains("." + FileTypesArray[j]))
+                        {
+                            FilesToDecrypt.add(files.get(i));
+                        }
+                    }
+                }
+            } 
             
             // Decrypt all files which have the specified file type.
             for (int i = 0; i < FilesToDecrypt.size(); i++)
